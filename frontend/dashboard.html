@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>My Library</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: sans-serif; background: #f0f2f5; padding: 2rem; }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2rem;
+    }
+    h2 { font-size: 1.5rem; }
+    button {
+      padding: 0.5rem 1rem;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+    .btn-primary { background: #4a90e2; color: white; }
+    .btn-primary:hover { background: #357abd; }
+    .btn-danger { background: #e74c3c; color: white; }
+    .btn-danger:hover { background: #c0392b; }
+    .btn-success { background: #2ecc71; color: white; }
+    .btn-success:hover { background: #27ae60; }
+    .btn-logout { background: #888; color: white; }
+    .btn-logout:hover { background: #666; }
+    .form-card {
+      background: white;
+      padding: 1.5rem;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+      margin-bottom: 2rem;
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+    .form-card input {
+      flex: 1;
+      min-width: 120px;
+      padding: 0.5rem 0.8rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 0.95rem;
+    }
+    .books-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 1rem;
+    }
+    .book-card {
+      background: white;
+      padding: 1.2rem;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+      border-left: 4px solid #4a90e2;
+    }
+    .book-card.read { border-left-color: #2ecc71; }
+    .book-card h3 { margin-bottom: 0.3rem; font-size: 1rem; }
+    .book-card p { color: #666; font-size: 0.85rem; margin-bottom: 0.8rem; }
+    .book-actions { display: flex; gap: 0.5rem; }
+    .empty { text-align: center; color: #888; margin-top: 3rem; font-size: 1.1rem; }
+  </style>
+</head>
+<body>
+  <header>
+    <h2>My Library</h2>
+    <button class="btn-logout" onclick="logout()">Logout</button>
+  </header>
+
+  <div class="form-card">
+    <input type="text" id="title" placeholder="Title" />
+    <input type="text" id="author" placeholder="Author" />
+    <input type="text" id="genre" placeholder="Genre" />
+    <button class="btn-primary" onclick="addBook()">Add Book</button>
+  </div>
+
+  <div class="books-grid" id="books"></div>
+
+  <script>
+    const API = "http://127.0.0.1:5000";
+    const token = localStorage.getItem("token");
+
+    if (!token) window.location.href = "index.html";
+
+    function authHeaders() {
+      return {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      };
+    }
+
+    async function loadBooks() {
+      const res = await fetch(`${API}/get_book`, { headers: authHeaders() });
+      if (res.status === 401) {
+        localStorage.removeItem("token");
+        window.location.href = "index.html";
+        return;
+      }
+      const books = await res.json();
+      const container = document.getElementById("books");
+      if (books.length === 0) {
+        container.innerHTML = '<p class="empty">No books yet. Add one above.</p>';
+        return;
+      }
+      container.innerHTML = books.map(book => `
+        <div class="book-card ${book.read ? 'read' : ''}" id="book-${book.id}">
+          <h3>${book.title}</h3>
+          <p>${book.author} &bull; ${book.genre}</p>
+          <div class="book-actions">
+            <button class="btn-success" onclick="toggleRead(${book.id}, ${book.read})">
+              ${book.read ? "Mark Unread" : "Mark Read"}
+            </button>
+            <button class="btn-danger" onclick="deleteBook(${book.id})">Delete</button>
+          </div>
+        </div>
+      `).join("");
+    }
+
+    async function addBook() {
+      const title = document.getElementById("title").value;
+      const author = document.getElementById("author").value;
+      const genre = document.getElementById("genre").value;
+      if (!title || !author || !genre) return alert("Fill all fields");
+      await fetch(`${API}/book`, {
+        method: "POST",
+        headers: authHeaders(),
+        body: JSON.stringify({ title, author, genre })
+      });
+      document.getElementById("title").value = "";
+      document.getElementById("author").value = "";
+      document.getElementById("genre").value = "";
+      loadBooks();
+    }
+
+    async function deleteBook(id) {
+      await fetch(`${API}/book/${id}`, {
+        method: "DELETE",
+        headers: authHeaders()
+      });
+      loadBooks();
+    }
+
+    async function toggleRead(id, currentRead) {
+      await fetch(`${API}/book/${id}`, {
+        method: "PUT",
+        headers: authHeaders(),
+        body: JSON.stringify({ read: currentRead ? 0 : 1 })
+      });
+      loadBooks();
+    }
+
+    async function logout() {
+      await fetch(`${API}/logout`, {
+        method: "POST",
+        headers: authHeaders()
+      });
+      localStorage.removeItem("token");
+      window.location.href = "index.html";
+    }
+
+    loadBooks();
+  </script>
+</body>
+</html>

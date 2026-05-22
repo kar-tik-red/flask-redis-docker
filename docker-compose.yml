@@ -1,0 +1,26 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: sharingan
+      POSTGRES_PASSWORD: ""
+      POSTGRES_DB: library
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7
+
+  web:
+    build: ./backend
+    ports:
+      - "5001:5000"
+    depends_on:
+      - db
+      - redis
+    environment:
+      DB_HOST: db
+      REDIS_HOST: redis
+
+volumes:
+  pgdata:
