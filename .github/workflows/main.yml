@@ -1,13 +1,17 @@
-name : CI
-on :
-  push :
-    branches :
-        - main
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+
 jobs:
-  builds :
-  runs-on : ubuntu -latest
+  build:
+    runs-on: ubuntu-latest
+
     steps:
-      - name : Checkout code
-        uses : actio /checkout@v4
-        - name: Build Docker image
-            run: docker build -t library-app ./backend
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build -t library-app ./backend
